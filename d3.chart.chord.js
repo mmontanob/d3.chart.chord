@@ -1,3 +1,7 @@
+/*! d3.chart.chord - v0.0.1
+ *  License: MIT
+ *  Date: 2017-11-25
+ */
 d3.chart('ChordMatrix', {
   initialize: function() {
     var chart = this;
