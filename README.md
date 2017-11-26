@@ -3,8 +3,9 @@
 Chord chart to represent relationship results from a matrix. See examples in the `example` folder.
 
 For example:
-
-[Chord Visualization](https://i.imgur.com/YRgUDQh.png)
+<div>
+  <img src="https://i.imgur.com/YRgUDQh.png" width="300" />
+</div>
 
 ### Sample Use
 
@@ -57,6 +58,33 @@ var chart = d3.select("#vis")
   .chart("ChordMatrix")
   .groups(['A', 'B', 'C', 'D']);
 ```
+
+#### `<instance>.matrix(newMatrix)`
+
+**Description:**
+
+If it has `newMatrix` as parameter it sets `newMatrix` as the data to create the chart; otherwise, it returns the current matrix.
+
+**Parameters:**
+
+* `newMatrix` - Square numeric matrix.
+
+**Uses:**
+
+Example:
+
+```javascript
+var chart = d3.select("#vis")
+  .append("svg")
+  .chart("ChordMatrix")
+  .matrix([
+    [1423,574,1049,483],
+    [1003,1658,1202,195],
+    [635,1917,1604,1693],
+    [958,206,1682,1220]
+  ]);
+```
+
 
 ### Events
 
