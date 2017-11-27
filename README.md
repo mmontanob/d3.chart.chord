@@ -4,7 +4,8 @@ Chord chart to represent relationship results from a matrix. See examples in the
 
 For example:
 <div>
-  <img src="https://i.imgur.com/YRgUDQh.png" width="300" />
+  <img src="https://imgur.com/Q3Z8vLk.png" width="300" style="display: inline-block" />
+  <img src="https://imgur.com/sLzmKC2.png" width="300" style="display: inline-block" />
 </div>
 
 ### Sample Use
@@ -88,4 +89,33 @@ var chart = d3.select("#vis")
 
 ### Events
 
-> TBD
+There're no events defined for this chart.
+
+## Extensions
+
+### Chord Confusion Matrix
+
+#### Sample Use
+
+```javascript
+var matrix = [
+  [26, 1, 0, 0, 1],
+  [1, 21, 3, 1, 4],
+  [0, 0, 20, 3, 2],
+  [0, 1, 2, 15, 12],
+  [9, 5, 7, 2, 7]
+];
+
+var groups = ['A', 'B', 'C', 'D', 'E'];
+
+var chord = d3.select("#vis")
+  .append("svg")
+  .chart("ChordConfusionMatrix")
+  .width(700)
+  .height(700)
+  .groups(groups)
+  .matrix(matrix)
+  .edgesColor('gray');
+
+chord.draw(colorScale);
+```
