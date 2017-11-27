@@ -18,6 +18,13 @@ d3.chart('ChordMatrix', {
       .append('g')
       .classed('chart', true);
     var chord = d3.svg.chord();
+
+    chart.grps = chart.grps? chart.grps : [];
+
+    // Arc Centers
+    chart.centers = [];
+    chart.selfTotals = [];
+    chart.edgColor = 'gray';
     
     var chordLayer = chart.layer('chart', chordBase, {
       
@@ -35,7 +42,7 @@ d3.chart('ChordMatrix', {
         .sortChords(d3.descending)
         .padding(0.04);
 
-        var padding = (chart.grps.length - 1) * 20;
+        var padding = (chart.grps.length - 1) * 10;
       
         // The arc generator, for the groups.
         var arc = d3.svg.arc()
@@ -67,7 +74,10 @@ d3.chart('ChordMatrix', {
         g.append('path')
         .style('fill', '#e6e9f0')
         .attr('id', function(d, i) { return 'group' + d.index + '-' + i; })
-        .attr('d', arc)
+        .attr('d', function(d) {
+          chart.centers[d.index] = [d.startAngle, d.endAngle];
+          return arc(d);
+        })
         .on("mouseover", _handleMouseOver)
         .on("mouseout", _handleMouseOut)
         .append('title')
@@ -76,7 +86,7 @@ d3.chart('ChordMatrix', {
         });
 
         chart.grps.forEach((grp, i) => {
-          var padding = 20 * i;
+          var padding = 10 * i;
           var arc2 = d3.svg.arc()
           .innerRadius(chart.innerRadius - padding)
           .outerRadius(chart.outerRadius - padding);
@@ -91,7 +101,7 @@ d3.chart('ChordMatrix', {
           .attr('id', function(d) { return 'group-bar' + d.index + '-' + i; })
           .attr('d', function(d) {
             var size = d.endAngle - d.startAngle;
-            var perc = chart.percs[i][d.index];
+            var perc = chart.percs[d.index][i];
             arc2.endAngle(d.startAngle + (size * perc));
             return arc2(d);
           })
@@ -99,7 +109,10 @@ d3.chart('ChordMatrix', {
           .on("mouseout", _handleMouseOut)
           .append('title')
           .text(function(d) { 
-            return chart.grps[i];
+            return chart.grps[i] + " = " + (
+              i == d.index? chart.selfTotals[i] :
+              chart.mtx[d.index][i]
+            );
           });
         });
 
@@ -116,17 +129,19 @@ d3.chart('ChordMatrix', {
 
     function _onMatrixEnter() {
       return this
-      .style('fill', function(d) { return chart.scale(d.source.subindex); })
+      .style('fill', chart.edgColor)
       .style('opacity', function(d) {
         if (typeof chart.focus == 'number' && 
           d.source.index != chart.focus &&
           d.source.subindex != chart.focus) {
-          return '0.25';
+          return '0.1';
         }
-        return '1';
+        return '0.75';
       })
-      .style('stroke', function(d) { return d3.rgb(chart.scale(d.source.subindex)).darker(); })
-      .attr('d', chord)
+      .filter(chart.filterPaths)
+      .attr('d', function(d) {
+        return chart.createChord(d, chord);
+      })
       .append('title')
       .text(function(d) {
         var txt = d.source.value + ' ' + chart.grps[d.source.index] + ' as ' + chart.grps[d.source.subindex]; 
@@ -136,16 +151,33 @@ d3.chart('ChordMatrix', {
         return txt;
       });
     }
-
     chordLayer.on('enter', _onMatrixEnter);
     chordLayer.on('update', _onMatrixEnter);
-
+  },
+  // Sets or gets edges color
+  edgesColor: function(newColor) {
+    if (!arguments.length) {
+      return this.edgColor;
+    }
+    this.edgColor = newColor;
     
+    // only repaint if we have data (in this case the scale)
+    if (this.scale) { this.draw(this.scale); }
+
+    return this;
+  },
+  // Creates a chord 
+  createChord: function(d, chord) {
+    return chord(d);
+  },
+  // Filter paths
+  filterPaths: function(d) {
+    return true;
   },
   // Calculates radius
   radius: function() {
     this.outerRadius = Math.min(this.w, this.h) / 2 - 4;
-    this.innerRadius = this.outerRadius - 20;
+    this.innerRadius = this.outerRadius - 10;
   },
   // Sets the groups
   groups: function(newGroups) {
@@ -196,6 +228,10 @@ d3.chart('ChordMatrix', {
 
     return this;
   },
+  calcMaxError: function() {
+    this.maxError = 0;
+    this.selfTotals = this.mtx.map((r, i) => r[i]);
+  },
   // Updates or sets matrix
   matrix : function(newMatrix) {
     if (!arguments.length) {
@@ -205,6 +241,7 @@ d3.chart('ChordMatrix', {
     this.mtx = newMatrix;
     var totals = this.mtx.map(row => row.reduce((a, b) => a + b));
     this.percs = this.mtx.map((row, i) => row.map((col) => col / totals[i]));
+    this.calcMaxError();
     // only repaint if we have data (in this case the scale)
     if (this.scale) { this.draw(this.scale); }
 
