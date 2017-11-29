@@ -6,7 +6,8 @@ module.exports = function(grunt) {
     meta: {
       pkg: grunt.file.readJSON("package.json"),
       srcFiles: [
-        "src/chord.js"
+        "src/chord.js",
+        "src/*.js"
       ]
     },
     watch: {

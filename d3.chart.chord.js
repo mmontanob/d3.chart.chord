@@ -1,6 +1,6 @@
 /*! d3.chart.chord - v0.0.1
  *  License: MIT
- *  Date: 2017-11-25
+ *  Date: 2017-11-28
  */
 d3.chart('ChordMatrix', {
   initialize: function() {
@@ -22,6 +22,17 @@ d3.chart('ChordMatrix', {
       .append('g')
       .classed('chart', true);
     var chord = d3.svg.chord();
+    chart.total = 100;
+
+    chart.grps = chart.grps? chart.grps : [];
+
+    // Arc Centers
+    chart.centers = [];
+    chart.selfTotals = [];
+    chart.edgColor = 'gray';
+
+    // Labels
+    chart.hasLabels = false;
     
     var chordLayer = chart.layer('chart', chordBase, {
       
@@ -39,15 +50,15 @@ d3.chart('ChordMatrix', {
         .sortChords(d3.descending)
         .padding(0.04);
 
-        var padding = (chart.grps.length - 1) * 20;
-      
+        var padding = (chart.grps.length - 1) * 10;
+        var labels = chart.hasLabels? 10 : 0;
         // The arc generator, for the groups.
         var arc = d3.svg.arc()
-        .innerRadius(chart.innerRadius - padding)
-        .outerRadius(chart.outerRadius);
+        .innerRadius(chart.innerRadius - padding - labels)
+        .outerRadius(chart.outerRadius - labels);
   
         // The chord generator (quadratic Bézier), for the chords.
-        chord.radius(chart.innerRadius - padding);
+        chord.radius(chart.innerRadius - padding - labels);
         
         layout.matrix(chart.mtx);
 
@@ -70,8 +81,11 @@ d3.chart('ChordMatrix', {
         // Add the group arc.
         g.append('path')
         .style('fill', '#e6e9f0')
-        .attr('id', function(d, i) { return 'group' + d.index + '-' + i; })
-        .attr('d', arc)
+        .attr('id', function(d) { return 'group' + d.index; })
+        .attr('d', function(d) {
+          chart.centers[d.index] = [d.startAngle, d.endAngle];
+          return arc(d);
+        })
         .on("mouseover", _handleMouseOver)
         .on("mouseout", _handleMouseOut)
         .append('title')
@@ -80,7 +94,7 @@ d3.chart('ChordMatrix', {
         });
 
         chart.grps.forEach((grp, i) => {
-          var padding = 20 * i;
+          var padding = 10 * (i + (chart.hasLabels? 1 : 0));
           var arc2 = d3.svg.arc()
           .innerRadius(chart.innerRadius - padding)
           .outerRadius(chart.outerRadius - padding);
@@ -95,7 +109,7 @@ d3.chart('ChordMatrix', {
           .attr('id', function(d) { return 'group-bar' + d.index + '-' + i; })
           .attr('d', function(d) {
             var size = d.endAngle - d.startAngle;
-            var perc = chart.percs[i][d.index];
+            var perc = chart.percs[d.index][i];
             arc2.endAngle(d.startAngle + (size * perc));
             return arc2(d);
           })
@@ -103,9 +117,29 @@ d3.chart('ChordMatrix', {
           .on("mouseout", _handleMouseOut)
           .append('title')
           .text(function(d) { 
-            return chart.grps[i];
+            return chart.grps[i] + " = " + (
+              i == d.index? chart.selfTotals[i] :
+              chart.mtx[d.index][i]
+            );
           });
         });
+
+        // Add labels
+        if (chart.hasLabels) {
+          g.append("text")
+          .attr("font-family", "sans-serif")
+          .attr("x", function(d) {
+            var angle = (d.endAngle - d.startAngle) / (2 * Math.PI);
+            return Math.PI * chart.innerRadius * angle;
+          })
+          .attr("dy", -2)
+          .filter(function(d) { 
+            return 0.1 <= (d.value / chart.total);
+           })
+          .append("textPath")
+          .attr("xlink:href", function(d) { return '#group' + d.index; })
+          .text(function(d) { return chart.grps[d.index]; });
+        }
 
         return this.selectAll('.chord')
         .data(layout.chords);
@@ -120,17 +154,19 @@ d3.chart('ChordMatrix', {
 
     function _onMatrixEnter() {
       return this
-      .style('fill', function(d) { return chart.scale(d.source.subindex); })
+      .style('fill', chart.edgColor)
       .style('opacity', function(d) {
         if (typeof chart.focus == 'number' && 
           d.source.index != chart.focus &&
           d.source.subindex != chart.focus) {
-          return '0.25';
+          return '0.1';
         }
-        return '1';
+        return '0.75';
       })
-      .style('stroke', function(d) { return d3.rgb(chart.scale(d.source.subindex)).darker(); })
-      .attr('d', chord)
+      .filter(chart.filterPaths)
+      .attr('d', function(d) {
+        return chart.createChord(d, chord);
+      })
       .append('title')
       .text(function(d) {
         var txt = d.source.value + ' ' + chart.grps[d.source.index] + ' as ' + chart.grps[d.source.subindex]; 
@@ -140,16 +176,33 @@ d3.chart('ChordMatrix', {
         return txt;
       });
     }
-
     chordLayer.on('enter', _onMatrixEnter);
     chordLayer.on('update', _onMatrixEnter);
-
+  },
+  // Sets or gets edges color
+  edgesColor: function(newColor) {
+    if (!arguments.length) {
+      return this.edgColor;
+    }
+    this.edgColor = newColor;
     
+    // only repaint if we have data (in this case the scale)
+    if (this.scale) { this.draw(this.scale); }
+
+    return this;
+  },
+  // Creates a chord 
+  createChord: function(d, chord) {
+    return chord(d);
+  },
+  // Filter paths
+  filterPaths: function(d) {
+    return true;
   },
   // Calculates radius
   radius: function() {
     this.outerRadius = Math.min(this.w, this.h) / 2 - 4;
-    this.innerRadius = this.outerRadius - 20;
+    this.innerRadius = this.outerRadius - 10;
   },
   // Sets the groups
   groups: function(newGroups) {
@@ -200,18 +253,70 @@ d3.chart('ChordMatrix', {
 
     return this;
   },
+  calcMaxError: function() {
+    this.maxError = 0;
+    this.selfTotals = this.mtx.map((r, i) => r[i]);
+  },
   // Updates or sets matrix
   matrix : function(newMatrix) {
     if (!arguments.length) {
       return this.mtx;
     }
     // save new matrix
-    this.mtx = newMatrix;
+    this.mtx = newMatrix.map(r => r.slice());
     var totals = this.mtx.map(row => row.reduce((a, b) => a + b));
     this.percs = this.mtx.map((row, i) => row.map((col) => col / totals[i]));
+    this.total = totals.reduce((a, b) => a + b);
+    this.calcMaxError();
     // only repaint if we have data (in this case the scale)
     if (this.scale) { this.draw(this.scale); }
 
     return this;
+  },
+  labels: function(value) {
+    if (!arguments.length) {
+      return this.hasLabels;
+    }
+    this.hasLabels = value;
+    // only repaint if we have data (in this case the scale)
+    if (this.scale) { this.draw(this.scale); }
+    
+    return this;
+  }
+});
+d3.chart("ChordMatrix").extend("ChordConfusionMatrix", {
+  calcMaxError: function() {
+    this.selfTotals = [];
+    this.mtx = this.mtx.map((r, i) => {
+      this.selfTotals[i] = r[i];
+      r[i] = 0;
+      return r;
+    });
+    var sum = (a, b) => a + b;
+    this.maxError = this.mtx.map((r, i) => r.reduce(sum))
+      .reduce((a, b) => Math.max(a, b));
+    this.total = this.mtx.map(r => r.reduce(sum)).reduce(sum);
+  },
+  // Creates a chord 
+  createChord: function(d, chord) {
+    // Source
+    var sourceCnt = this.centers[d.source.index];
+    var srcFullSize = sourceCnt[1] - sourceCnt[0];
+    var srcSize = Math.min(0.25, srcFullSize);
+    var srcStart = sourceCnt[0] + (srcFullSize / 2) - (srcSize / 2);
+    d.source.startAngle = srcStart;
+    d.source.endAngle = srcStart + (srcSize * (d.source.value / this.maxError));
+    // Target
+    var tgCnt = this.centers[d.target.index];
+    var tgFullSize = tgCnt[1] - tgCnt[0];
+    var tgSize = Math.min(0.25, tgFullSize);
+    var tgStart = tgCnt[0] + (tgFullSize / 2) - (tgSize / 2);
+    d.target.startAngle = tgStart;
+    d.target.endAngle = tgStart + (tgSize * (d.target.value / this.maxError));
+    return chord(d);
+  },
+  // Filter paths
+  filterPaths: function(d) {
+    return d.source.index != d.source.subindex;
   }
 });
