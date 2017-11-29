@@ -1,13 +1,12 @@
 d3.chart('ChordMatrix').extend('ChordConfusionMatrix', {
   calcMaxError: function() {
-    this.selfTotals = [];
-    this.mtx = this.mtx.map((r, i) => {
-      this.selfTotals[i] = r[i];
+    this.pivotMtx = this.percs.map(r => r.slice())
+    .map((r, i) => {
       r[i] = 0;
-      return r;
+      return r.map(c => c * 100);
     });
     var sum = (a, b) => a + b;
-    this.maxError = this.mtx.map((r, i) => r.reduce(sum))
+    this.maxError = this.pivotMtx.map((r, i) => r.reduce(sum))
       .reduce((a, b) => Math.max(a, b));
     this.total = this.mtx.map(r => r.reduce(sum)).reduce(sum);
   },
