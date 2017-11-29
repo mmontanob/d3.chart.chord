@@ -18,6 +18,7 @@
     .width(700)
     .height(700)
     .groups(groups)
+    .labels(true)
     .matrix(matrix);
 
   chord.draw(colorScale);

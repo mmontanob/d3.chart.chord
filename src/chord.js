@@ -18,6 +18,7 @@ d3.chart('ChordMatrix', {
       .append('g')
       .classed('chart', true);
     var chord = d3.svg.chord();
+    chart.total = 100;
 
     chart.grps = chart.grps? chart.grps : [];
 
@@ -25,6 +26,9 @@ d3.chart('ChordMatrix', {
     chart.centers = [];
     chart.selfTotals = [];
     chart.edgColor = 'gray';
+
+    // Labels
+    chart.hasLabels = false;
     
     var chordLayer = chart.layer('chart', chordBase, {
       
@@ -43,14 +47,14 @@ d3.chart('ChordMatrix', {
         .padding(0.04);
 
         var padding = (chart.grps.length - 1) * 10;
-      
+        var labels = chart.hasLabels? 10 : 0;
         // The arc generator, for the groups.
         var arc = d3.svg.arc()
-        .innerRadius(chart.innerRadius - padding)
-        .outerRadius(chart.outerRadius);
+        .innerRadius(chart.innerRadius - padding - labels)
+        .outerRadius(chart.outerRadius - labels);
   
         // The chord generator (quadratic Bézier), for the chords.
-        chord.radius(chart.innerRadius - padding);
+        chord.radius(chart.innerRadius - padding - labels);
         
         layout.matrix(chart.mtx);
 
@@ -73,7 +77,7 @@ d3.chart('ChordMatrix', {
         // Add the group arc.
         g.append('path')
         .style('fill', '#e6e9f0')
-        .attr('id', function(d, i) { return 'group' + d.index + '-' + i; })
+        .attr('id', function(d) { return 'group' + d.index; })
         .attr('d', function(d) {
           chart.centers[d.index] = [d.startAngle, d.endAngle];
           return arc(d);
@@ -86,7 +90,7 @@ d3.chart('ChordMatrix', {
         });
 
         chart.grps.forEach((grp, i) => {
-          var padding = 10 * i;
+          var padding = 10 * (i + (chart.hasLabels? 1 : 0));
           var arc2 = d3.svg.arc()
           .innerRadius(chart.innerRadius - padding)
           .outerRadius(chart.outerRadius - padding);
@@ -115,6 +119,23 @@ d3.chart('ChordMatrix', {
             );
           });
         });
+
+        // Add labels
+        if (chart.hasLabels) {
+          g.append("text")
+          .attr("font-family", "sans-serif")
+          .attr("x", function(d) {
+            var angle = (d.endAngle - d.startAngle) / (2 * Math.PI);
+            return Math.PI * chart.innerRadius * angle;
+          })
+          .attr("dy", -2)
+          .filter(function(d) { 
+            return 0.1 <= (d.value / chart.total);
+           })
+          .append("textPath")
+          .attr("xlink:href", function(d) { return '#group' + d.index; })
+          .text(function(d) { return chart.grps[d.index]; });
+        }
 
         return this.selectAll('.chord')
         .data(layout.chords);
@@ -238,13 +259,24 @@ d3.chart('ChordMatrix', {
       return this.mtx;
     }
     // save new matrix
-    this.mtx = newMatrix;
+    this.mtx = newMatrix.map(r => r.slice());
     var totals = this.mtx.map(row => row.reduce((a, b) => a + b));
     this.percs = this.mtx.map((row, i) => row.map((col) => col / totals[i]));
+    this.total = totals.reduce((a, b) => a + b);
     this.calcMaxError();
     // only repaint if we have data (in this case the scale)
     if (this.scale) { this.draw(this.scale); }
 
+    return this;
+  },
+  labels: function(value) {
+    if (!arguments.length) {
+      return this.hasLabels;
+    }
+    this.hasLabels = value;
+    // only repaint if we have data (in this case the scale)
+    if (this.scale) { this.draw(this.scale); }
+    
     return this;
   }
 });

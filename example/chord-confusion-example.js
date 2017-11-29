@@ -20,6 +20,7 @@
       .height(700)
       .groups(groups)
       .matrix(matrix)
+      .labels(true)
       .edgesColor('gray');
   
     chord.draw(colorScale);
