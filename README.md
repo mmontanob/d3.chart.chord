@@ -86,6 +86,26 @@ var chart = d3.select("#vis")
   ]);
 ```
 
+#### `<instance>.labels(value)`
+
+**Description:**
+
+Sets if the chart should display the labels for the groups.
+
+**Parameters:**
+
+* `value` - A boolean.
+
+**Uses:**
+
+Example:
+
+```javascript
+var chart = d3.select("#vis")
+  .append("svg")
+  .chart("ChordMatrix")
+  .labels(true);
+```
 
 ### Events
 

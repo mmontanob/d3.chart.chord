@@ -1,4 +1,4 @@
-d3.chart("ChordMatrix").extend("ChordConfusionMatrix", {
+d3.chart('ChordMatrix').extend('ChordConfusionMatrix', {
   calcMaxError: function() {
     this.selfTotals = [];
     this.mtx = this.mtx.map((r, i) => {

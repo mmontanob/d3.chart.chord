@@ -82,8 +82,8 @@ d3.chart('ChordMatrix', {
           chart.centers[d.index] = [d.startAngle, d.endAngle];
           return arc(d);
         })
-        .on("mouseover", _handleMouseOver)
-        .on("mouseout", _handleMouseOut)
+        .on('mouseover', _handleMouseOver)
+        .on('mouseout', _handleMouseOut)
         .append('title')
         .text(function(d) { 
           return chart.grps[d.index];
@@ -109,31 +109,36 @@ d3.chart('ChordMatrix', {
             arc2.endAngle(d.startAngle + (size * perc));
             return arc2(d);
           })
-          .on("mouseover", _handleMouseOver)
-          .on("mouseout", _handleMouseOut)
+          .on('mouseover', _handleMouseOver)
+          .on('mouseout', _handleMouseOut)
           .append('title')
           .text(function(d) { 
-            return chart.grps[i] + " = " + (
+            return chart.grps[i] + ' = ' + (
               i == d.index? chart.selfTotals[i] :
               chart.mtx[d.index][i]
             );
           });
         });
-
         // Add labels
         if (chart.hasLabels) {
-          g.append("text")
-          .attr("font-family", "sans-serif")
-          .attr("x", function(d) {
-            var angle = (d.endAngle - d.startAngle) / (2 * Math.PI);
-            return Math.PI * chart.innerRadius * angle;
+          var fontSize = parseFloat(this.style('font-size')) * 0.75;
+          g.append('text')
+          .attr('font-family', 'sans-serif')
+          .attr('x', function(d) {
+            var angle = d.value / chart.total;
+            var textLen = chart.grps[d.index].length * fontSize;
+            var center = Math.PI * chart.innerRadius * angle;
+            return center - Math.floor(textLen / 2);
           })
-          .attr("dy", -2)
+          .attr('dy', -2)
           .filter(function(d) { 
-            return 0.1 <= (d.value / chart.total);
+            var textLen = chart.grps[d.index].length * fontSize;
+            var angle = (d.endAngle - d.startAngle) / (2 * Math.PI);
+            var angleSize = 2 * chart.innerRadius * angle * Math.PI;
+            return textLen < angleSize;
            })
-          .append("textPath")
-          .attr("xlink:href", function(d) { return '#group' + d.index; })
+          .append('textPath')
+          .attr('xlink:href', function(d) { return '#group' + d.index; })
           .text(function(d) { return chart.grps[d.index]; });
         }
 
