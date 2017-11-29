@@ -28,7 +28,6 @@ d3.chart('ChordMatrix', {
 
     // Arc Centers
     chart.centers = [];
-    chart.selfTotals = [];
     chart.edgColor = 'gray';
 
     // Labels
@@ -60,7 +59,7 @@ d3.chart('ChordMatrix', {
         // The chord generator (quadratic Bézier), for the chords.
         chord.radius(chart.innerRadius - padding - labels);
         
-        layout.matrix(chart.mtx);
+        layout.matrix(chart.pivotMtx);
 
         // Add groups.
         var g = this.selectAll('.group')
@@ -86,8 +85,8 @@ d3.chart('ChordMatrix', {
           chart.centers[d.index] = [d.startAngle, d.endAngle];
           return arc(d);
         })
-        .on("mouseover", _handleMouseOver)
-        .on("mouseout", _handleMouseOut)
+        .on('mouseover', _handleMouseOver)
+        .on('mouseout', _handleMouseOut)
         .append('title')
         .text(function(d) { 
           return chart.grps[d.index];
@@ -113,31 +112,33 @@ d3.chart('ChordMatrix', {
             arc2.endAngle(d.startAngle + (size * perc));
             return arc2(d);
           })
-          .on("mouseover", _handleMouseOver)
-          .on("mouseout", _handleMouseOut)
+          .on('mouseover', _handleMouseOver)
+          .on('mouseout', _handleMouseOut)
           .append('title')
           .text(function(d) { 
-            return chart.grps[i] + " = " + (
-              i == d.index? chart.selfTotals[i] :
-              chart.mtx[d.index][i]
-            );
+            return chart.grps[i] + ' = ' + chart.mtx[d.index][i];
           });
         });
-
         // Add labels
         if (chart.hasLabels) {
-          g.append("text")
-          .attr("font-family", "sans-serif")
-          .attr("x", function(d) {
+          var fontSize = parseFloat(this.style('font-size')) * 0.75;
+          g.append('text')
+          .attr('font-family', 'sans-serif')
+          .attr('x', function(d) {
             var angle = (d.endAngle - d.startAngle) / (2 * Math.PI);
-            return Math.PI * chart.innerRadius * angle;
+            var textLen = chart.grps[d.index].length * fontSize;
+            var center = Math.PI * chart.innerRadius * angle;
+            return center - Math.floor(textLen / 2);
           })
-          .attr("dy", -2)
+          .attr('dy', -2)
           .filter(function(d) { 
-            return 0.1 <= (d.value / chart.total);
+            var textLen = chart.grps[d.index].length * fontSize;
+            var angle = (d.endAngle - d.startAngle) / (2 * Math.PI);
+            var angleSize = 2 * chart.innerRadius * angle * Math.PI;
+            return textLen < angleSize;
            })
-          .append("textPath")
-          .attr("xlink:href", function(d) { return '#group' + d.index; })
+          .append('textPath')
+          .attr('xlink:href', function(d) { return '#group' + d.index; })
           .text(function(d) { return chart.grps[d.index]; });
         }
 
@@ -169,9 +170,12 @@ d3.chart('ChordMatrix', {
       })
       .append('title')
       .text(function(d) {
-        var txt = d.source.value + ' ' + chart.grps[d.source.index] + ' as ' + chart.grps[d.source.subindex]; 
+        var txt = (100 * chart.percs[d.source.index][d.source.subindex]).toFixed(2) + 
+        '% ' + chart.grps[d.source.index] + 
+        ' as ' + chart.grps[d.source.subindex]; 
         if (d.source.index != d.target.index) {
-          txt += ', ' + d.target.value + ' ' + chart.grps[d.target.index] + ' as ' + chart.grps[d.target.subindex]; 
+          txt += ', ' + (100 * chart.percs[d.target.index][d.target.subindex]).toFixed(2) + 
+          '% ' + chart.grps[d.target.index] + ' as ' + chart.grps[d.target.subindex]; 
         } 
         return txt;
       });
@@ -255,7 +259,6 @@ d3.chart('ChordMatrix', {
   },
   calcMaxError: function() {
     this.maxError = 0;
-    this.selfTotals = this.mtx.map((r, i) => r[i]);
   },
   // Updates or sets matrix
   matrix : function(newMatrix) {
@@ -264,6 +267,7 @@ d3.chart('ChordMatrix', {
     }
     // save new matrix
     this.mtx = newMatrix.map(r => r.slice());
+    this.pivotMtx = newMatrix.map(r => r.slice());
     var totals = this.mtx.map(row => row.reduce((a, b) => a + b));
     this.percs = this.mtx.map((row, i) => row.map((col) => col / totals[i]));
     this.total = totals.reduce((a, b) => a + b);
@@ -284,16 +288,15 @@ d3.chart('ChordMatrix', {
     return this;
   }
 });
-d3.chart("ChordMatrix").extend("ChordConfusionMatrix", {
+d3.chart('ChordMatrix').extend('ChordConfusionMatrix', {
   calcMaxError: function() {
-    this.selfTotals = [];
-    this.mtx = this.mtx.map((r, i) => {
-      this.selfTotals[i] = r[i];
+    this.pivotMtx = this.percs.map(r => r.slice())
+    .map((r, i) => {
       r[i] = 0;
-      return r;
+      return r.map(c => c * 100);
     });
     var sum = (a, b) => a + b;
-    this.maxError = this.mtx.map((r, i) => r.reduce(sum))
+    this.maxError = this.pivotMtx.map((r, i) => r.reduce(sum))
       .reduce((a, b) => Math.max(a, b));
     this.total = this.mtx.map(r => r.reduce(sum)).reduce(sum);
   },

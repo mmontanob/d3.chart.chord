@@ -171,7 +171,7 @@ d3.chart('ChordMatrix', {
         ' as ' + chart.grps[d.source.subindex]; 
         if (d.source.index != d.target.index) {
           txt += ', ' + (100 * chart.percs[d.target.index][d.target.subindex]).toFixed(2) + 
-          ' ' + chart.grps[d.target.index] + ' as ' + chart.grps[d.target.subindex]; 
+          '% ' + chart.grps[d.target.index] + ' as ' + chart.grps[d.target.subindex]; 
         } 
         return txt;
       });
